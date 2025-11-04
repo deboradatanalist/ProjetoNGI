@@ -63,6 +63,7 @@ df_disney['rating'].fillna('Unrated', inplace=True)
 
 df_disney.head(20)
 
+#função para retirar a string (min, Seson e Sesons) da coluna 'Duration'
 def extrair_unidade_e_valor(duration_str):
         if pd.isna(duration_str):
             return (None, None)
@@ -83,24 +84,27 @@ def extrair_unidade_e_valor(duration_str):
 
         return (unidade, valor)
 
-# Criar as novas colunas
+# Criar as novas colunas para colocar o valor e a string (unidade de tempo)
 df_disney[['duration_unit', 'duration_value']] = df_disney['duration'].apply(
         lambda x: pd.Series(extrair_unidade_e_valor(x))
     )
 df_disney.rename(columns={'type': 'content_type'}, inplace=True)
 df_disney.drop(columns=['duration', 'description'], inplace=True)
 
+# Ordenar as colunas e selecionar apenas as colunas que precisa para o DF ir para o DB
 colunas_finais = [
         'id_pk', 'content_type', 'title', 'director', 'cast', 'country',
         'date_added', 'release_year', 'rating', 'duration_value',
         'duration_unit', 'listed_in'
     ]
+#fazer uma cópia do Dataframe com as mudanças para fazer o upload para o DB
 df_disney_sql = df_disney[colunas_finais].copy()
 
 df_disney_sql.head(20)
 
 df_disney_sql.info()
 
+# Converter a coluna 'date_added' para formato de Data e 'duration_value' pra Float
 df_disney_sql['date_added'] = pd.to_datetime(df_disney_sql['date_added'])
 df_disney_sql['duration_value'] = df_disney['duration_value'].astype(float)
 df_disney_sql.info()
@@ -118,23 +122,20 @@ df_disney_movie_sql.head(15)
 
 df_disney_serie_sql.head(10)
 
-"""## Carregamento dos dados SQLite"""
+"""## Carregamento dos dados no SQLite"""
 
 DISNEY_DB = 'disney_etl_project.db'
 DISNEY_TABLE = 'conteudo_disney'
 
 conn = sqlite3.connect(DISNEY_DB)
 
-print(f"\nCarregando dados na tabela '{DISNEY_TABLE}' do banco '{DISNEY_DB}'...")
-
+# Carregar a Tabela no Banco de Dados
 df_disney_sql.to_sql(DISNEY_TABLE, conn, if_exists='replace', index=False)
 
 conn.execute(f"CREATE UNIQUE INDEX idx_id_pk ON {DISNEY_TABLE} (id_pk);")
 
 conn.commit()
 conn.close()
-
-print("Carregamento e Criação do Banco SQLite concluídos com sucesso.")
 
 """## Consulta SQL"""
 
@@ -181,7 +182,7 @@ try:
         T1.director, T1.release_year DESC
     LIMIT 10;
     """
-    print("\n[Consulta 1] Top 10 dos filmes longos com diretores populares:")
+    print("\n[Consulta 1] Top 10 dos filmes longa-metragem com diretores populares:")
     print(pd.read_sql_query(query_1, conn))
 
 
